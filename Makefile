@@ -2,11 +2,13 @@ CC=clang
 CFLAGS=-g -Wall -Werror -Wpedantic -Iinclude
 LD=clang
 LDFLAGS=
-PROG=pi_lcd_carousel
-OBJS=main.o net/plc_netinfo.o
 RM=/bin/rm -f
+SRCS=$(shell find -name '*.c' | tr '\n' ' ')
+OBJS=$(shell find -name '*.c' | sed -e 's/\.c/\.o/' | tr '\n' ' ')
 
-all : pi_lcd_carousel
+PROG=pi_lcd_carousel
+
+all : $(PROG)
 
 $(PROG): $(OBJS) 
 	$(LD) $(LDFLAGS) $(OBJS) -o $(PROG)
