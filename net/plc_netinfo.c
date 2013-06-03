@@ -53,8 +53,9 @@ int plc_netinfo(plc_netinfo_t **target)
   // do the ioctl call that should fill up
   // our buffer
   ret = ioctl(netdev, SIOCGIFCONF, &conf);
-  if (ret != 0)
-    return ret;
+  if (ret != 0) {
+    goto cleanup_netdev;
+  }
 
   plc_netinfo_t **current = target;
 
@@ -74,16 +75,21 @@ int plc_netinfo(plc_netinfo_t **target)
     if (get_ip_str(&entry.ifr_addr,
                (*current)->address,
                sizeof (*current)->address) == NULL) {
-      return -1;
+      ret = -1;
+      goto cleanup_netdev;
     }
 
     // make sure current now points to the next one
     current = &(*current)->next;
   }
 
+  ret = 0;
+
+cleanup_netdev:
+
   close(netdev);
 
-  return 0;
+  return ret;
 }
 
 int plc_netinfo_cleanup(plc_netinfo_t **netinfo)
