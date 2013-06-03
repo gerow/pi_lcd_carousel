@@ -1,5 +1,5 @@
 CC=clang
-CFLAGS=-g -Wall -Werror -Wpedantic -Iinclude
+CFLAGS=-g -Wall -Werror -Iinclude
 LD=clang
 LDFLAGS=
 RM=/bin/rm -f
