@@ -10,8 +10,6 @@ typedef struct plc_netinfo {
   struct plc_netinfo *next;
 } plc_netinfo_t;
 
-int plc_netinfo(plc_netinfo_t **netinfo);
-
-int plc_netinfo_cleanup(plc_netinfo_t **netinfo);
+int plc_netinfo(plc_netinfo_t *netinfo, int bytes);
 
 #endif /* PLC_NETINFO_H_ */

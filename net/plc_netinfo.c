@@ -34,11 +34,8 @@ char *get_ip_str(const struct sockaddr *sa, char *s, size_t maxlen)
   return s;
 }
 
-int plc_netinfo(plc_netinfo_t **target)
+int plc_netinfo(plc_netinfo_t *out_buffer, int bytes)
 {
-  // Null out the target if it isn't already
-  *target = NULL;
-
   int ret = 0;
   int netdev = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
   if (netdev < 0)
@@ -57,42 +54,38 @@ int plc_netinfo(plc_netinfo_t **target)
     goto cleanup_netdev;
   }
 
-  plc_netinfo_t **current = target;
+  int n = bytes / sizeof *out_buffer;
 
-  for (int i = 0; i < conf.ifc_len / (sizeof *conf.ifc_req); i++) {
-    // allocate a new plc_netinfo struct
-    *current = malloc(sizeof(**current));
-    // zero it out to be safe (also we need
-    // to make sure that the next pointer is NULL)
-    memset(*current, 0, sizeof **current);
+  int i = 0;
+  for (; i < conf.ifc_len / (sizeof *conf.ifc_req); i++) {
+    // zero out this entry in the output buffer
+    memset(&out_buffer[i], 0, sizeof out_buffer[i]);
     // copy the ifr_name we got from the ioctl into
     // the newly allocated name field
     struct ifreq entry;
     entry = conf.ifc_req[i];
     // copy the name over
-    memcpy((*current)->name, entry.ifr_name, sizeof (*current)->name);
+    memcpy(&out_buffer[i].name, entry.ifr_name, sizeof out_buffer[i].name);
     // ntop the address and copy it over
     if (get_ip_str(&entry.ifr_addr,
-               (*current)->address,
-               sizeof (*current)->address) == NULL) {
+               out_buffer[i].address,
+               sizeof out_buffer[i].address) == NULL) {
       ret = -1;
       goto cleanup_netdev;
     }
 
-    // make sure current now points to the next one
-    current = &(*current)->next;
+    // if we've reached the end of our buffer
+    if (i == n - 1) {
+      // just break out and return what we have
+      break;
+    }
   }
 
-  ret = 0;
+  ret = i * sizeof *out_buffer;
+  printf("returning %d\n", ret);
 
 cleanup_netdev:
-
   close(netdev);
 
   return ret;
-}
-
-int plc_netinfo_cleanup(plc_netinfo_t **netinfo)
-{
-  return 0;
 }
