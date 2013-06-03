@@ -6,7 +6,7 @@
 
 typedef struct plc_netinfo {
   char name[IFNAMSIZ];
-  char address[INET6_ADDRSTRLEN];
+  char address[INET_ADDRSTRLEN];
   struct plc_netinfo *next;
 } plc_netinfo_t;
 

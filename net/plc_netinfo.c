@@ -44,53 +44,41 @@ int plc_netinfo(plc_netinfo_t **target)
   if (netdev < 0)
     return netdev;
 
-  struct ifreq req;
-  // Clear out req
-  memset(&req, 0, sizeof req);
+  struct ifconf conf;
+  // Create a buffer for up to 32 interfaces
+  char buffer[32 * sizeof *conf.ifc_req];
+  conf.ifc_buf = buffer;
+  conf.ifc_len = sizeof buffer;
+
+  // do the ioctl call that should fill up
+  // our buffer
+  ret = ioctl(netdev, SIOCGIFCONF, &conf);
+  if (ret != 0)
+    return ret;
 
   plc_netinfo_t **current = target;
 
-  // interface indices begin at 1. Why?
-  // ... I'm not quite sure...
-  req.ifr_ifindex = 1;
-  while (ioctl(netdev, SIOCGIFNAME, &req) == 0) {
+  for (int i = 0; i < conf.ifc_len / (sizeof *conf.ifc_req); i++) {
     // allocate a new plc_netinfo struct
     *current = malloc(sizeof(**current));
     // zero it out to be safe (also we need
     // to make sure that the next pointer is NULL)
     memset(*current, 0, sizeof **current);
-    printf("copying info for %s\n", req.ifr_name);
     // copy the ifr_name we got from the ioctl into
     // the newly allocated name field
-    memcpy((*current)->name, req.ifr_name, IFNAMSIZ);
-    printf("got info for %s\n", req.ifr_name);
-
-    ret = ioctl(netdev, SIOCGIFCONF, &req);
-    if (ret < 0) {
-      // oh god, just cleanup what we've allocated
-      // so far and exit
-      int cleanup_ret = plc_netinfo_cleanup(target);
-      if (cleanup_ret < 0) {
-        // :(
-        return cleanup_ret;
-      }
-      return ret;
+    struct ifreq entry;
+    entry = conf.ifc_req[i];
+    // copy the name over
+    memcpy((*current)->name, entry.ifr_name, sizeof (*current)->name);
+    // ntop the address and copy it over
+    if (get_ip_str(&entry.ifr_addr,
+               (*current)->address,
+               sizeof (*current)->address) == NULL) {
+      return -1;
     }
-
-    //if (get_ip_str(&req.ifr_addr, (*current)->address,
-    //          sizeof *(*current)->address) == NULL) {
-    //  return -1;
-    //}
-
-    printf("address is %s\n", (*current)->address);
 
     // make sure current now points to the next one
     current = &(*current)->next;
-    // Conveniently, this last ioctl leaves us
-    // with a valid if name in ifr_name, so let's
-    // just use it!
-    // allocate a new one!
-    req.ifr_ifindex++;
   }
 
   close(netdev);
